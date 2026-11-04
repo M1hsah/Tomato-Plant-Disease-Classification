@@ -1,0 +1,12 @@
+# Majority-vote baseline: always predicts the most common PlantVillage training class.
+# Uncapped (cap: null) so "most common" reflects the real class imbalance
+# (yellow leaf curl virus is ~35% of PlantVillage).
+experiment: baseline
+model: majority
+aug: none
+cap: null
+seeds: [0]          # deterministic, so one seed is enough
+
+data_dir: data/raw
+manifest: data/manifest.csv
+output_dir: outputs

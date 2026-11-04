@@ -42,6 +42,7 @@ It also writes `reports/dedup_report.csv` and `reports/dedup_pairs.png`
 ## Train and evaluate
 
 ```bash
+python -m src.train --config configs/baseline_majority.yaml  # majority-vote baseline (always predicts the most common class)
 python -m src.train --config configs/E1.yaml --overfit    # sanity check: should reach ~100% on 32 images
 python -m src.train --config configs/E1.yaml --debug      # tiny subset, 1 epoch: checks everything runs
 python -m src.train --config configs/E1.yaml --seed 0     # one seed (omit --seed to run all seeds in the config)

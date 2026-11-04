@@ -263,10 +263,38 @@ class SimpleCNN(nn.Module):
         return self.fc(self.dropout(x))
 
 
+class MajorityClassifier(nn.Module):
+    """Majority-vote baseline: ignores the image and always predicts the most
+    common training class. Any real model must beat this to be learning anything.
+
+    Its scores are the training class frequencies, so argmax is the majority
+    class and top-2 is the two most common classes.
+    """
+
+    def __init__(self, num_classes: int = NUM_CLASSES):
+        super().__init__()
+        # A buffer (not a parameter): saved in the checkpoint, but never trained.
+        self.register_buffer("log_prior", torch.zeros(num_classes))
+
+    def fit(self, labels: np.ndarray) -> None:
+        counts = np.bincount(labels, minlength=len(self.log_prior))
+        prior = torch.tensor(counts / counts.sum(), dtype=torch.float32)
+        self.log_prior.copy_(torch.log(prior.clamp_min(1e-12)))
+
+    @property
+    def majority_class(self) -> int:
+        return int(self.log_prior.argmax())
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.log_prior.expand(x.shape[0], -1)
+
+
 def build_model(name: str) -> nn.Module:
+    if name == "majority":
+        return MajorityClassifier(NUM_CLASSES)
     if name == "simple_cnn":
         return SimpleCNN(NUM_CLASSES)
-    raise ValueError(f"model '{name}' is not implemented yet (resnet18 / efficientnet_b0 come with E2)")
+    raise ValueError(f"model '{name}' is not implemented yet (resnet18 / efficientnet_b0 come with E3)")
 
 
 # =========================================================================== #
@@ -334,6 +362,38 @@ def train_run(cfg: dict, seed: int, debug: bool = False) -> Path:
     params = count_params(model)
     print(f"model: {cfg['model']}, {params:,} parameters")
 
+    if cfg["model"] == "majority":
+        best_f1, best_epoch, history, train_time = fit_majority(model, train_df, val_df, ckpt_path)
+    else:
+        best_f1, best_epoch, history, train_time = fit_network(
+            model, cfg, train_df, train_loader, val_loader, ckpt_path, device, epochs)
+
+    run_cfg = {**cfg, "seed": seed, "run_name": name, "debug": debug, "checkpoint": str(ckpt_path),
+               "best_epoch": best_epoch, "best_val_macro_f1": best_f1, "params": params,
+               "train_time_s": round(train_time, 1), "n_train": len(train_df)}
+    (run_dir / "config.yaml").write_text(yaml.safe_dump(run_cfg, sort_keys=False))
+    pd.DataFrame(history).to_csv(run_dir / "history.csv", index=False)
+    print(f"best epoch {best_epoch} (val macro-F1 {best_f1:.3f}), trained in {train_time:.0f}s")
+
+    evaluate_run(run_dir)
+    return run_dir
+
+
+def fit_majority(model, train_df, val_df, ckpt_path) -> tuple[float, int, list, float]:
+    """'Training' the majority baseline is just counting the training labels."""
+    start = time.perf_counter()
+    model.fit(train_df["label_idx"].to_numpy())
+    torch.save({"model": model.state_dict(), "epoch": 0}, ckpt_path)
+    val_labels = val_df["label_idx"].to_numpy()
+    val_f1 = macro_f1(val_labels, np.full(len(val_labels), model.majority_class))
+    print(f"majority class: {LABELS[model.majority_class]}")
+    return val_f1, 0, [], time.perf_counter() - start
+
+
+def fit_network(model, cfg, train_df, train_loader, val_loader, ckpt_path, device,
+                epochs) -> tuple[float, int, list, float]:
+    """Gradient training with early stopping. Saves the best checkpoint and
+    returns (best val macro-F1, best epoch, per-epoch history, seconds)."""
     # Uncapped PlantVillage is very imbalanced (yellow leaf curl is ~35%), so
     # weight the loss to stop the model favouring the biggest class.
     weight = None
@@ -366,17 +426,7 @@ def train_run(cfg: dict, seed: int, debug: bool = False) -> Path:
         if epoch - best_epoch >= cfg["patience"]:
             print(f"early stopping: no val improvement for {cfg['patience']} epochs")
             break
-    train_time = time.perf_counter() - start
-
-    run_cfg = {**cfg, "seed": seed, "run_name": name, "debug": debug, "checkpoint": str(ckpt_path),
-               "best_epoch": best_epoch, "best_val_macro_f1": best_f1, "params": params,
-               "train_time_s": round(train_time, 1), "n_train": len(train_df)}
-    (run_dir / "config.yaml").write_text(yaml.safe_dump(run_cfg, sort_keys=False))
-    pd.DataFrame(history).to_csv(run_dir / "history.csv", index=False)
-    print(f"best epoch {best_epoch} (val macro-F1 {best_f1:.3f}), trained in {train_time:.0f}s")
-
-    evaluate_run(run_dir)
-    return run_dir
+    return best_f1, best_epoch, history, time.perf_counter() - start
 
 
 def overfit_check(cfg: dict, seed: int, steps: int = 200) -> None:
