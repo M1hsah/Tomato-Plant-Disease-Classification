@@ -38,3 +38,17 @@ It also writes `reports/dedup_report.csv` and `reports/dedup_pairs.png`
 (a contact sheet of flagged near-duplicates to spot-check).
 
 **Do not regenerate the manifest after experiments start** — the split must stay fixed.
+
+## Train and evaluate
+
+```bash
+python -m src.train --config configs/E1.yaml --overfit    # sanity check: should reach ~100% on 32 images
+python -m src.train --config configs/E1.yaml --debug      # tiny subset, 1 epoch: checks everything runs
+python -m src.train --config configs/E1.yaml --seed 0     # one seed (omit --seed to run all seeds in the config)
+python -m src.train --evaluate outputs/runs/<run_name>    # re-evaluate a saved run
+```
+
+Training uses PlantVillage only; the best epoch is picked on PlantVillage val.
+Each run is then evaluated on PlantVillage test and on the PlantDoc field images.
+Results go to `outputs/results.csv` (one row per run and eval set) and
+`outputs/runs/<run_name>/` (config, training history, metrics, confusion matrices).
