@@ -234,8 +234,9 @@ def assign_pv_groups(df: pd.DataFrame, data_dir: Path, threshold: int) -> pd.Dat
 # 4. Deduplication
 # --------------------------------------------------------------------------- #
 def dedup_plantdoc(df: pd.DataFrame, threshold: int) -> tuple[pd.DataFrame, list[dict]]:
-    """Cluster PlantDoc near-duplicates, keep one per cluster, and remove any
-    PlantDoc image that is a near-duplicate of a PlantVillage image.
+    """Cluster PlantDoc near-duplicates and keep one per cluster (none if the
+    copies disagree on the label), and remove any PlantDoc image that is a
+    near-duplicate of a PlantVillage image.
 
     Returns the updated frame and a list of flagged pairs for the report.
     """
@@ -256,6 +257,11 @@ def dedup_plantdoc(df: pd.DataFrame, threshold: int) -> tuple[pd.DataFrame, list
     for cid, (_, members) in enumerate(sorted(clusters.items())):
         for i in members:
             df.at[i, "group_id"] = f"pd_{cid}"
+        # The same photo filed under different diseases is label noise: we cannot
+        # tell which label is right (and must not relabel), so drop every copy.
+        if df.loc[members, "label"].nunique() > 1:
+            df.loc[members, "is_duplicate"] = True
+            continue
         # Prefer keeping an official test/ image so that subset stays as intact as possible.
         keep = min(members, key=lambda i: (df.at[i, "orig_split"] != "test", df.at[i, "path"]))
         for i in members:
