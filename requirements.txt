@@ -8,3 +8,4 @@ Pillow>=10.0
 imagehash>=4.3
 pyyaml>=6.0
 tqdm>=4.65
+ipykernel>=6.0  # to run results.ipynb locally (VS Code / Jupyter)
