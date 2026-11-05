@@ -54,7 +54,7 @@ DEFAULT_CONFIG = {
     "output_dir": "outputs",
 }
 
-# The three sets every model is evaluated on (CLAUDE.md section 9).
+# The three sets every model is evaluated on (docs/DEVELOPMENT_PLAN.md, section 10).
 EVAL_SETS = ["plantvillage_test", "plantdoc_field", "plantdoc_official_test"]
 
 
@@ -119,7 +119,7 @@ def to_normalized_tensor() -> list:
 
 
 def get_transform(aug: str, train: bool) -> v2.Compose:
-    """Image preprocessing by name: 'none', 'standard' or 'strong' (CLAUDE.md section 6).
+    """Image preprocessing by name: 'none', 'standard' or 'strong' (docs/DEVELOPMENT_PLAN.md, section 7).
 
     Evaluation always uses the plain resize + center crop, whatever `aug` is.
     """
