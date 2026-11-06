@@ -1,0 +1,19 @@
+# E2: same as E1 but with standard data augmentation, to answer the TA's question:
+# does augmenting PlantVillage images change performance (on PlantVillage and on PlantDoc)?
+# Everything except `aug` matches E1, so any difference comes from augmentation alone.
+experiment: E2
+model: simple_cnn
+aug: standard       # random crop, flips, rotation, colour jitter (training images only)
+cap: 250            # max PlantVillage training images per class (null = uncapped)
+seeds: [0, 1, 2]
+
+epochs: 20
+batch_size: 32
+lr: 0.001
+weight_decay: 0.0001
+patience: 4
+num_workers: 4
+
+data_dir: data/raw
+manifest: data/manifest.csv
+output_dir: outputs

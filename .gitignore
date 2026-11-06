@@ -1,0 +1,17 @@
+# Datasets, checkpoints and run outputs are large and must never be committed.
+data/
+outputs/
+*.pt
+*.pth
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Notebooks / OS / editors
+.ipynb_checkpoints/
+.DS_Store
+.vscode/
+.idea/

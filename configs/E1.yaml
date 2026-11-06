@@ -1,0 +1,18 @@
+# E1 baseline: measure the lab -> field gap with a small CNN trained from scratch.
+# Any key not listed here uses DEFAULT_CONFIG in src/train.py.
+experiment: E1
+model: simple_cnn
+aug: none
+cap: 250            # max PlantVillage training images per class (null = uncapped)
+seeds: [0, 1, 2]
+
+epochs: 20
+batch_size: 32
+lr: 0.001
+weight_decay: 0.0001
+patience: 4
+num_workers: 4
+
+data_dir: data/raw
+manifest: data/manifest.csv
+output_dir: outputs
